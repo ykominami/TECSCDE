@@ -4,7 +4,7 @@ require "tecscde/version"
 
 Gem::Specification.new do |spec|
   spec.name          = "tecscde"
-  spec.version       = Tecscde::VERSION
+  spec.version       = TECSCDE::VERSION
   spec.authors       = ["Hiroshi OYAMA", "Kenji Okimoto"]
   spec.email         = ["hiro22022@gmail.com", "okimoto@clear-code.com"]
 
@@ -29,13 +29,13 @@ Gem::Specification.new do |spec|
     `git ls-files -z`.split("\x0").reject {|f| f.match(%r{^(test|spec|features)/}) }
   end
   spec.bindir        = "bin"
-  spec.executables   = spec.files.grep(%r{^exe/}) {|f| File.basename(f) }
+  spec.executables   = spec.files.grep(%r{^bin/}) {|f| File.basename(f) }
   spec.require_paths = ["lib"]
 
 #  spec.add_runtime_dependency "gtk2", ">= 3.3.0"
   spec.add_runtime_dependency "gtk2", ">= 3.3.0-x64-mingw32"
 
-  spec.add_development_dependency "bundler", "~> 1.17"
+  spec.add_development_dependency "bundler"
   spec.add_development_dependency "racc"
   spec.add_development_dependency "rake"
   spec.add_development_dependency "rubocop", "~> 0.61.1"

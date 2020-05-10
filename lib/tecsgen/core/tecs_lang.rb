@@ -36,8 +36,6 @@
 #   $Id: tecs_lang.rb 2061 2014-05-31 22:15:33Z okuma-top $
 #++
 
-require "kconv" # TODO remove kconv
-
 #== 言語に関する変数を設定
 # メッセージファイルの読み込みも行う (読み込みに失敗した場合、デフォルトの文字コードに変更する)
 class TECS_LANG
@@ -134,15 +132,7 @@ class TECS_LANG
   #   ・TECSGEN_FILE_LANG 環境変数 (ファイルの文字コードのみ)
   #   ・-k オプション (ファイルの文字コードのみ)
   def self.set_lang_var
-    if $IN_EXERB && (ENV["TERM"].nil? || ENV["TERM"] == "cygwin")
-      # exerb 版で端末 cygwin の時は codepage のみを見る
-      cp = get_win_codepage
-      lang = codepage_to_lang cp
-      $LANG_FILE, $CHARSET_FILE, *dum = self.parse_lang(lang)
-      $LANG_CONSOLE = $LANG_FILE
-      $CHARSET_CONSOLE = $CHARSET_FILE
-
-    elsif ENV["LANG"]
+    if ENV["LANG"]
       # 非 exerb 版では LANG 環境変数を見る
       # cygwin console では codepage に従って出力した方が平和なため
 
@@ -194,68 +184,36 @@ class TECS_LANG
     end
   end
 
-  #=== Kconv クラス用の変数を設定
-  # 言語情報から Kconv に関する変数を設定
-  def self.set_kconv_var
+  # 言語情報から Encoding に関する変数を設定
+  def self.set_encoding_var
     # 文字コードの設定
     case $CHARSET_FILE           # string: "EUC" | "SJIS" | "NONE" | "UTF8"
     when :eucJP
-      $KCODE_CDL = "EUC"
-      $KCONV_CDL = Kconv::EUC
+      $ENCODING_CDL = Encoding::EUC_JP
       $Ruby19_File_Encode = "ASCII-8BIT"
     when :sjis
-      $KCODE_CDL = "SJIS"
-      $KCONV_CDL = Kconv::SJIS
+      $ENCODING_CDL = Encoding::Shift_JIS
       $Ruby19_File_Encode = "Shift_JIS"
     when :utf8
-      $KCODE_CDL = "UTF8"
-      $KCONV_CDL = Kconv::UTF8
+      $ENCODING_CDL = Encoding::UTF_8
       $Ruby19_File_Encode = "ASCII-8BIT"
     else
-      $KCODE_CDL = "BINARY"
-      $KCONV_CDL = Kconv::BINARY
+      $ENCODING_CDL = Encoding::BINARY
       $Ruby19_File_Encode = "ASCII-8BIT"
     end
 
     case $CHARSET_CONSOLE
     when :eucJP
-      $KCODE_CONSOLE = "EUC"
-      $KCONV_CONSOLE = Kconv::EUC
+      $ENCODING_CONSOLE = Encoding::EUC_JP
     when :sjis
-      $KCODE_CONSOLE = "SJIS"
-      $KCONV_CONSOLE = Kconv::SJIS
+      $ENCODING_CONSOLE = Encoding::Shift_JIS
     when :utf8
-      $KCODE_CONSOLE = "UTF8"
-      $KCONV_CONSOLE = Kconv::UTF8
+      $ENCODING_CONSOLE = Encoding::UTF_8
     else
-      $KCODE_CONSOLE = "BINARY"
-      $KCONV_CONSOLE = Kconv::BINARY
+      $ENCODING_CONSOLE = Encoding::BINARY
     end
 
-    $KCODE_TECSGEN = "UTF8"      # string: "EUC"  このファイルの文字コード（オプションではなく定数）
-    $KCONV_TECSGEN = Kconv::UTF8 # const:
-    # set_kcode $KCODE_TECSGEN     # このファイルの文字コードを設定
-  end
-
-  #=== 一時的に KCODE を BINARY に変更する
-  # EUC を UTF8 で読み込んだ場合に文字区切りを誤る問題の対応
-  # コメントの読み飛ばしを誤る点が問題
-  # ただし、SJIS の場合は、エスケープ文字の問題があるため、変更しない
-  def self.set_kcode_binary
-    # 2.0
-    if $b_no_kcode
-      return
-    end
-
-    $KCODE_BACK = $KCODE
-    if $KCODE != "SJIS"
-      set_kcode "BINARY"
-    end
-  end
-
-  #=== 一時的なあ KCODE の変更を元に戻す
-  def self.reset_kcode
-    set_kcode $KCODE_BACK
+    $ENCODING_TECSGEN = Encoding::UTF_8 # const:
   end
 
   #####
@@ -309,17 +267,15 @@ class TECS_LANG
     $LANG_FILE, $CHARSET_FILE = $LANG_FILE_DEFAULT, $CHARSET_FILE_DEFAULT
   end
 
-  # Kconv クラスのための変数を設定
-  self.set_kconv_var
+  self.set_encoding_var
 
   dbgPrint "LANG_FILE=#{$LANG_FILE}.#{$CHARSET_FILE}, LANG_CONSOLE=#{$LANG_CONSOLE}.#{$CHARSET_CONSOLE}\n"
-  dbgPrint "KCODE_CDL=#{$KCODE_CDL}(#{$KCONV_CDL}) KCODE_CONSOLE=#{$KCODE_CONSOLE}(#{$KCONV_CONSOLE})\n"
+  dbgPrint "ENCODING_CDL=#{$ENCODING_CDL} ENCODING_CONSOLE=#{$ENCODING_CONSOLE}\n"
   dbgPrint "Ruby19_File_Encode=#{$Ruby19_File_Encode}\n"
 
   #=== 単体テスト実行
   if $unit_test
     print "unit test: set_lang_var\n"
-    require "kconv"
     self.set_lang_var
     print "#{$LANG_FILE} #{$LANG_CONSOLE}\n"
     print "#{$CHARSET_FILE} #{$CHARSET_CONSOLE}\n"
@@ -333,25 +289,18 @@ end
 # 文字コードを変換する
 class Console
   def self.print(str)
-    if $b_no_kcode && $KCONV_CONSOLE == Kconv::BINARY
-      STDOUT.print str
+    if $ENCODING_CONSOLE == Encoding::BINARY
+      STDOUT.print(str)
     else
-      STDOUT.print str.kconv($KCONV_CONSOLE, $KCONV_TECSGEN)
+      STDOUT.print(str.encode($ENCODING_CONSOLE))
     end
   end
 
   def self.puts(str)
-    if $b_no_kcode && $KCONV_CONSOLE == Kconv::BINARY
-      STDOUT.puts str
+    if $ENCODING_CONSOLE == Encoding::BINARY
+      STDOUT.puts(str)
     else
-      STDOUT.puts str.kconv($KCONV_CONSOLE, $KCONV_TECSGEN)
+      STDOUT.puts(str.encode($ENCODING_CONSOLE))
     end
-  end
-end
-
-# Copy from original tecgen.rb
-def set_kcode(kcode)
-  if !$b_no_kcode
-    $KCODE = kcode
   end
 end

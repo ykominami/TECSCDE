@@ -44,11 +44,10 @@ class TECSMsg
   # CDL の文字コードに合わせて、文字コード変換を行う
   def self.get(msg)
     str = @@comment[msg]
-# 2.0    if $KCONV_TECSGEN == $KCONV_CDL
-    if $KCONV_TECSGEN == $KCONV_CDL || $KCONV_CDL == Kconv::BINARY
+    if $ENCODING_TECSGEN == $ENCODING_CDL || $ENCODING_CDL == Encoding::BINARY
       return str
     else
-      return str.kconv($KCONV_CDL, $KCONV_TECSGEN)
+      return str.encode($ENCODING_CDL)
     end
   end
 

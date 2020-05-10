@@ -1,9 +1,19 @@
+inherit_from: .rubocop_todo.yml
+
 AllCops:
   TargetRubyVersion: 2.5
   DisplayCopNames: true
   Exclude:
+    - "Rakefile"
+    - "*.gemspec"
     - "vendor/**/*"
     - "lib/**/*.tab.rb"
+    - "lib/tecsgen.rb"
+    - "lib/tecsgen/**/*.rb"
+    - "lib/tcflow.rb"
+    - "lib/tecsflow.rb"
+    - "lib/tecsflow/**/*.rb"
+    - "glade/*.rb"
 
 Layout/ExtraSpacing:
   AllowForAlignment: true
@@ -11,6 +21,10 @@ Layout/SpaceInsideBlockBraces:
   EnforcedStyle: space
   SpaceBeforeBlockParameters: false
 Layout/MultilineMethodCallIndentation:
+  EnforcedStyle: indented
+Layout/EmptyLineAfterGuardClause:
+  Enabled: false
+Layout/MultilineOperationIndentation:
   EnforcedStyle: indented
 
 Lint/UnderscorePrefixedVariableName:
@@ -30,6 +44,18 @@ Metrics/MethodLength:
 
 Naming/FileName:
   Enabled: false
+Naming/UncommunicativeMethodParamName:
+  AllowedNames:
+    - x
+    - y
+    - x0
+    - y0
+    - xm
+    - ym
+    - xx
+    - xy
+    - yx
+    - yy
 
 Style/AsciiComments:
   Enabled: false
@@ -37,6 +63,8 @@ Style/HashSyntax:
   Exclude:
     - "**/*.rake"
     - "Rakefile"
+Style/EmptyMethod:
+  Enabled: false
 Style/FrozenStringLiteralComment:
   Enabled: false
 Style/NumericLiterals:
@@ -65,3 +93,33 @@ Style/IfUnlessModifier:
   Enabled: false
 Style/NumericPredicate:
   Enabled: false
+Style/MutableConstant:
+  Enabled: false
+Style/SymbolArray:
+  Enabled: false
+Style/FormatString:
+  Enabled: false
+Style/ConditionalAssignment:
+  Enabled: false
+Style/WhileUntilModifier:
+  Enabled: false
+Style/RedundantBegin:
+  Enabled: false
+Style/YodaCondition:
+  EnforcedStyle: forbid_for_equality_operators_only
+Style/TernaryParentheses:
+  EnforcedStyle: require_parentheses_when_complex
+Style/MethodCallWithArgsParentheses:
+  Exclude:
+    - "**/*.rake"
+    - "Rakefile"
+    - "Gemfile"
+  Enabled: true
+  IgnoredMethods:
+    - p
+    - pp
+    - puts
+    - print
+    - printf
+    - raise
+    - require

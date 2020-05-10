@@ -52,12 +52,11 @@
 # Authors::    安積　卓也(ASP+TECS, EV3RT+TECS, mruby on TECS等実装)
 #  Authors list is in i-ro-ha order.
 # Version::   see version.rb
-$Copyright = "Copyright(c) 2008-2018, TOPPERS project. All rights reserved."
-$License   = "TOPPERS License"
 
 # This doesn't work as expected in exerb version (Ruby 1.8.7?)
 $tecsgen_base_path = File.dirname(File.expand_path __FILE__)
 
+require "tecsgen/version"
 
 ###
 #= Array  initializer の '{', '}' で囲まれた場合
@@ -94,7 +93,6 @@ end
 # RETURN::Bool   : true=成功、 false=失敗   失敗した場合、Generator.error は呼び元で出力する
 def require_tecsgen_lib(fname, b_fatal = true)
   dbgPrint("require_lib: #{fname}\n")
-  set_kcode $KCODE_TECSGEN
   begin
     b_require = false
     b_exception = false
@@ -156,9 +154,6 @@ def require_tecsgen_lib(fname, b_fatal = true)
       return false
     end
     return true
-  ensure
-    # $KCODE を CDL の文字コードに戻しておく
-    set_kcode $KCODE_CDL
   end
 end
 
@@ -206,12 +201,6 @@ def print_report
   puts msg if msg
 end
 
-#=== $KCODE を設定
-def set_kcode(kcode)
-  if !$b_no_kcode
-    $KCODE = kcode
-  end
-end
 #----- class TECSGEN -------#
 class TECSGEN
   @@current_tecsgen = nil
@@ -220,7 +209,7 @@ class TECSGEN
     initialize_global_var
     analyze_option addtional_option_parser
     load_modules
-    setup
+    setup unless $TECSFLOW
 
     dbgPrint  "tecspath: #{$tecsgen_base_path}, __FILE__=#{__FILE__}\n"
     dbgPrint  "ARGV(remained): #{ARGV}, argments=#{$arguments}\n"
@@ -264,15 +253,7 @@ class TECSGEN
   #-----  initialize_global_var -----#
   def self.initialize_global_var
     require "optparse"
-    # 2.0 require 'runit/assert.rb'
-    require "kconv"
-    $b_no_kcode = RUBY_VERSION >= "1.9.0" ? true : false
-    # Use Ruby 1.9 M17N code (use Ruby 1.8 code if false).
-    if !$b_no_kcode
-      require "jcode"
-    end
     require "pp"
-    # include RUNIT::Assert
 
     ### グローバル変数定義 ###
 
@@ -337,19 +318,9 @@ class TECSGEN
       $tecspath = "#{$tecsgen_base_path}/tecs"
     end
 
-    # # 文字コードの設定
-    if $IN_EXERB
-      # KCODE_CDL, $KCONV_CDL を仮に設定する (tecs_lang.rb ですぐに再設定される)
-      $KCODE_CDL = "SJIS"          # string: "EUC" | "SJIS" | "NONE" | "UTF8"
-      $KCONV_CDL = Kconv::SJIS     # const: NONE には ASCII を対応させる
-    else
-      $KCODE_CDL = "EUC"           # string: "EUC" | "SJIS" | "NONE" | "UTF8"
-      $KCONV_CDL = Kconv::EUC      # const: NONE には ASCII を対応させる
-    end
-    # $KCODE_TECSGEN, $KCONV_TECSGEN を仮に設定する (tecs_lang.rb ですぐに再設定される)
-    $KCODE_TECSGEN = "UTF8"      # string: "EUC"  このファイルの文字コード（オプションではなく定数）
-    $KCONV_TECSGEN = Kconv::UTF8 # const:
-    set_kcode($KCODE_TECSGEN) # このファイルの文字コードを設定
+    # 文字コードの設定
+    $ENCODING_CDL = Encoding::EUC_JP    # const: NONE には ASCII を対応させる
+    $ENCODING_TECSGEN = Encoding::UTF_8 # const:
   end # initialize_global_var
 
   def self.analyze_option(additional_option_parser)
@@ -452,7 +423,7 @@ class TECSGEN
       }
       #  parser.on(  '--include_path_opt_format',  'cpp include path option format, default: "-I %s"' ){
       #  }
-      parser.version = # {$version}
+      parser.version = # {TECSGEN::VERSION}
       parser.release = nil
       if additional_option_parser
         additional_option_parser.call(parser)
@@ -460,7 +431,7 @@ class TECSGEN
       parser.parse!
     }
 
-    if ARGV.empty? && !$print_version && !$unit_test
+    if ARGV.empty? && !$print_version && !$unit_test && !$TECSFLOW
       ARGV.options{|parser|
         puts parser.help
         exit 1
@@ -477,14 +448,14 @@ class TECSGEN
     # このファイルを誤って読み込むと、異なるバージョン名を表示してしまう
     require "tecsgen/version"
     if $tecscde_version
-      STDERR << "tecscde version #{$tecscde_version} (tecsgen version #{$version})  #{$Copyright}\n"
+      STDERR << "tecscde version #{$tecscde_version} (tecsgen version #{TECSGEN::VERSION})  #{TECSGEN::COPYRIGHT}\n"
     elsif !$no_banner || $print_version
-      STDERR << "tecsgen  version #{$version}  #{$Copyright}\n"
+      STDERR << "tecsgen  version #{TECSGEN::VERSION}  #{TECSGEN::COPYRIGHT}\n"
     end
     if $verbose
       STDERR << "ruby #{RUBY_VERSION} (#{RUBY_RELEASE_DATE} patchlevel #{RUBY_PATCHLEVEL}) [#{RUBY_PLATFORM}]\n"
     end
-    if $print_version && ARGV.empty?
+    if $print_version && ARGV.empty? && !$TECSFLOW
       exit
     end
 
@@ -510,8 +481,10 @@ class TECSGEN
     require "tecsgen/core/tecsgen"
     require "tecsgen/core/generate"
     require "tecsgen/core/gen_xml"
+    require "tecsgen/core/location"
     require "tecsgen/core/tool_info"
     require "tecsgen/core/tecsinfo"
+    require "tecsgen/core/unjoin_plugin"
     require "tecsgen/plugin/CelltypePlugin"
     require "tecsgen/plugin/CompositePlugin"
     require "tecsgen/plugin/CellPlugin"
@@ -530,9 +503,6 @@ class TECSGEN
   end # load_modules
 
   def self.setup
-    # $import_path, $tecspath を調整
-    TECSGEN.adjust_exerb_path
-
     # $import_path に環境変数 $TECSGEN およびその直下を追加
     if $no_default_import_path == false
       # $TECSGEN および、その直下のディレクトリをパスに追加
@@ -594,12 +564,13 @@ end # TECSGEN
 # 複数のジェネレータインスタンスを生成することは、可能だが、以下の問題がある
 #  クラス変数のリセットを確実に行う必要がある
 
-if $TECSCDE != true
+if $TECSCDE != true && $TECSFLOW != true
   begin
     TECSGEN.init
     tecsgen = TECSGEN.new
     tecsgen.run1
     tecsgen.run2
+    tecsgen.dump_tecsgen_rbdmp
   rescue => evar
     print_exception(evar)
     STDERR << "tecsgen: exit because of unrecoverble error.\n"
